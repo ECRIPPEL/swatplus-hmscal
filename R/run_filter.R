@@ -44,14 +44,35 @@ filter_invalid_runs <- function(comparativo, valid_runs, obs_col = "Flow",
 
 #' Extract valid run names from a SWATrunR simulation object
 #'
+#' Handles both shapes that SWATrunR produces:
+#'   (a) scalar-unit output: sim_output[[nm]] is a tibble with run_* columns
+#'   (b) vector-unit output: sim_output[[nm]] is NULL; instead the per-unit
+#'       tibbles live as sim_output[[paste0(nm, "_", id)]] (e.g.,
+#'       "vazao_multi_day_5", "vazao_multi_day_19", ...). For (b) we use
+#'       the FIRST matching per-unit tibble as the canonical run set.
+#'
 #' @param sim_output Simulation list (sim$simulation)
 #' @param output_names Character vector of output names to check
 #' @return Character vector of run names present in ALL outputs
 get_valid_runs <- function(sim_output, output_names) {
   runs_by_output <- lapply(output_names, function(nm) {
-    grep("^run_", names(sim_output[[nm]]), value = TRUE)
+    if (!is.null(sim_output[[nm]])) {
+      grep("^run_", names(sim_output[[nm]]), value = TRUE)
+    } else {
+      # Vector-unit output — find first sim_output[["<nm>_<id>"]] match
+      pat  <- sprintf("^%s_[0-9]+$", nm)
+      keys <- grep(pat, names(sim_output), value = TRUE)
+      if (length(keys) == 0) {
+        warning("get_valid_runs: output '", nm,
+                "' not found (no scalar key, no <name>_<id> pattern).")
+        return(character(0))
+      }
+      grep("^run_", names(sim_output[[keys[1]]]), value = TRUE)
+    }
   })
 
+  runs_by_output <- runs_by_output[lengths(runs_by_output) > 0]
+  if (length(runs_by_output) == 0) return(character(0))
   Reduce(intersect, runs_by_output)
 }
 

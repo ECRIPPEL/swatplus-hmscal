@@ -134,7 +134,12 @@ calc_all_ee <- function(metrics_df, metric_names, param_names) {
 #' Compute sensitivity indices (mu_star, sigma) from Elementary Effects
 #'
 #' @param ee_all Tibble with EE values (output of calc_all_ee)
-#' @return List with $sensitivity (full table) and $ranking (obj_total only)
+#' @return List with:
+#'   - $sensitivity : full per-metric × per-parameter table (saved as
+#'                    morris_sensitivity_<TAG>.csv for analysis)
+#'   - $ranking     : obj_total-only ranking (used by classify_morris and
+#'                    by the run_cal.R narrowing logic; mu_med statistics
+#'                    are only meaningful within one metric)
 compute_sensitivity <- function(ee_all) {
   sensitivity <- ee_all %>%
     filter(!is.na(parameter)) %>%

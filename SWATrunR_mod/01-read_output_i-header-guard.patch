@@ -1,0 +1,33 @@
+diff --git a/R/swatplus_handle_output.R b/R/swatplus_handle_output.R
+index 742547b..5e169fe 100644
+--- a/R/swatplus_handle_output.R
++++ b/R/swatplus_handle_output.R
+@@ -102,8 +102,26 @@ read_swatplus_output <- function(output, thread_path, add_date, revision) {
+ #' @keywords internal
+ #'
+ read_output_i <- function(output_i, col_names_i, thread_path, date_cols) {
+-  fread(thread_path%//%output_i$file_full[1], skip = 3) %>%
+-    as_tibble(.) %>%
++  raw_data <- fread(thread_path%//%output_i$file_full[1], skip = 3) %>%
++    as_tibble(.)
++
++  # Guard against SWAT+ writer defects where the header row lists more column
++  # names than the data rows actually contain (observed in rev. 2026.61.0.2.61
++  # for lsunit_wb_aa.txt: 51 names in header, 49 numeric columns per row --
++  # plant_cov and mgt_ops are listed but never written). Without this guard
++  # `[, 1:length(col_names_i)]` aborts with "Locations N and N+1 don't exist"
++  # and the whole run_swatplus() call returns NULL after every thread finished.
++  n_data <- ncol(raw_data)
++  if (length(col_names_i) > n_data) {
++    dropped <- col_names_i[(n_data + 1):length(col_names_i)]
++    warning(sprintf(
++      "[SWATrunR] '%s': header has %d cols but data has %d. Truncating header (dropping: %s).",
++      output_i$file_full[1], length(col_names_i), n_data,
++      paste(dropped, collapse = ", ")), call. = FALSE)
++    col_names_i <- col_names_i[seq_len(n_data)]
++  }
++
++  raw_data %>%
+     .[,1:length(col_names_i)] %>%
+     set_names(col_names_i) %>%
+     select(., all_of(c(date_cols, 'unit', output_i$variable))) %>%

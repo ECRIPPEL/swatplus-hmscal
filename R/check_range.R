@@ -1,5 +1,5 @@
 # ==============================================================================
-# check_range.R — Parameter range validation against cal_parms.cal (Phase 1)
+# check_range.R - Parameter range validation against cal_parms.cal (Iteration 1)
 # ==============================================================================
 
 library(dplyr)

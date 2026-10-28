@@ -1,29 +1,42 @@
 # ==============================================================================
-# master.R — Orchestrator: GSA1 -> CAL1 -> GSA2 -> CAL2 -> GSA3 -> CAL3
+# master.R — Orchestrator for the four HMSCal iterations.
 #
-# Runs all 6 steps sequentially.
+# A Morris screening precedes Iterations 1 to 3; Iteration 4 reuses the
+# classification from the third screening. That is 7 steps in total:
+#
+#   MORRIS1 -> ITER1 -> MORRIS2 -> ITER2 -> MORRIS3 -> ITER3 -> ITER4
+#
+# Runs all 7 steps sequentially.
 # Can be interrupted and resumed from any step.
 #
 # USAGE:
 #   source("master.R")                    # run all steps
-#   START_FROM <- 3; source("master.R")   # resume from step 3 (GSA2)
+#   START_FROM <- 3; source("master.R")   # resume from step 3 (MORRIS2)
 # ==============================================================================
 
 # Starting step (default = 1)
 if (!exists("START_FROM")) START_FROM <- 1
 
 steps <- list(
-  list(step = 1, label = "GSA Phase 1",  script = "run_gsa.R", config = "config/phase1.yaml"),
-  list(step = 2, label = "CAL Phase 1",  script = "run_cal.R", config = "config/phase1.yaml"),
-  list(step = 3, label = "GSA Phase 2",  script = "run_gsa.R", config = "config/phase2.yaml"),
-  list(step = 4, label = "CAL Phase 2",  script = "run_cal.R", config = "config/phase2.yaml"),
-  list(step = 5, label = "GSA Phase 3",  script = "run_gsa.R", config = "config/phase3.yaml"),
-  list(step = 6, label = "CAL Phase 3",  script = "run_cal.R", config = "config/phase3.yaml")
+  list(step = 1, label = "MORRIS1 - Morris screening, annual scale",
+                                                 script = "run_morris.R", config = "config/iteration1.yaml"),
+  list(step = 2, label = "ITER1 - Iteration 1, annual water balance (RC + BFI proxy)",
+                                                 script = "run_cal.R", config = "config/iteration1.yaml"),
+  list(step = 3, label = "MORRIS2 - Morris screening, monthly scale",
+                                                 script = "run_morris.R", config = "config/iteration2.yaml"),
+  list(step = 4, label = "ITER2 - Iteration 2, monthly streamflow + RC + BFI proxy",
+                                                 script = "run_cal.R", config = "config/iteration2.yaml"),
+  list(step = 5, label = "MORRIS3 - Morris screening, daily scale",
+                                                 script = "run_morris.R", config = "config/iteration3.yaml"),
+  list(step = 6, label = "ITER3 - Iteration 3, daily streamflow + RC + BFI proxy (routing params enter)",
+                                                 script = "run_cal.R", config = "config/iteration3.yaml"),
+  list(step = 7, label = "ITER4 - Iteration 4, same daily criteria on the narrowed ranges",
+                                                 script = "run_cal.R", config = "config/iteration4.yaml")
 )
 
 cat("==============================================================\n")
-cat(" SWAT+ HIERARCHICAL MULTI-SCALE CALIBRATION\n")
-cat(" GSA1 -> CAL1 -> GSA2 -> CAL2 -> GSA3 -> CAL3\n")
+cat(" HMSCal - HIERARCHICAL MULTISCALE CALIBRATION OF SWAT+\n")
+cat(" MORRIS1 -> ITER1 -> MORRIS2 -> ITER2 -> MORRIS3 -> ITER3 -> ITER4\n")
 cat("==============================================================\n")
 cat(" Starting from step:", START_FROM, "\n\n")
 
@@ -34,12 +47,12 @@ for (s in steps) {
   }
 
   cat("\n==============================================================\n")
-  cat(" STEP", s$step, "/6 -", s$label, "\n")
+  cat(" STEP", s$step, "/", length(steps), "-", s$label, "\n")
   cat("==============================================================\n")
 
   t_start <- Sys.time()
 
-  PHASE_CONFIG <- s$config
+  ITERATION_CONFIG <- s$config
   .MASTER_STATE <- list(steps = steps, s = s, START_FROM = START_FROM, t_start = t_start)
   source(s$script, local = FALSE)
   list2env(.MASTER_STATE, envir = globalenv())

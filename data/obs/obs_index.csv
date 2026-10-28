@@ -1,0 +1,5 @@
+source,code,channel_id,channel_position,quality_class,status,interpret_results,obs_file_daily,obs_file_monthly,first_date,last_date,n_total,n_valid,gauge_lat,gauge_lon,gauge_source,channel_lat,channel_lon
+ANA,71498000,73,inlet,A,natural,yes,cha073_obs_daily_71498000.csv,cha073_obs_mon_71498000.csv,1985-01-01,2024-12-31,14610,13634,-27.3339,-50.7539,ANA inventory,-27.3636,-50.7602
+ANA,70200000,194,inlet,A,natural,yes,cha194_obs_daily_70200000.csv,cha194_obs_mon_70200000.csv,1985-01-01,2024-12-31,14610,14581,-28.4394,-50.3019,ANA inventory,-28.4417,-50.3590
+ANA,73350000,79,meio,A,natural,yes,cha079_obs_daily_73350000.csv,cha079_obs_mon_73350000.csv,1985-01-01,2024-12-31,14610,14542,-27.1656,-52.5228,ANA inventory,-27.1165,-52.5000
+ANA,74100000,33,outlet,A,regulada desde 1973,no_regulated,cha033_obs_daily_74100000.csv,cha033_obs_mon_74100000.csv,1985-01-01,2024-12-31,14610,14610,-27.1756,-53.2297,ANA inventory,-27.1486,-53.1519

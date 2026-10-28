@@ -2,11 +2,11 @@
 # versioning.R — Auto-versioned output folder management
 # ==============================================================================
 
-#' Create an auto-versioned folder (e.g., GSA_phase1_v1, v2, v3...)
+#' Create an auto-versioned folder (e.g., MORRIS1_v1, v2, v3...)
 #'
-#' @param base_path Base directory (e.g., "C:/uru")
-#' @param prefix Version prefix (e.g., "GSA_phase1_v")
-#' @return List with $tag (e.g., "GSA_phase1_v3") and $path (full path)
+#' @param base_path Base directory (e.g., "C:/path/to/swatplus_project")
+#' @param prefix Version prefix (e.g., "MORRIS1_v")
+#' @return List with $tag (e.g., "MORRIS1_v3") and $path (full path)
 create_versioned_folder <- function(base_path, prefix) {
   folders <- list.dirs(base_path, full.names = FALSE, recursive = FALSE)
 

@@ -1,0 +1,292 @@
+# ==============================================================================
+# ITERATION 1 CONFIG — annual water balance (RC + BFI proxy criteria)
+# ==============================================================================
+
+iteration: 1
+script_version: "iteration1"
+
+# --- Paths and execution (PRODUCTION — Cap 2 1980s window) ---
+project_path: "C:/path/to/swatplus_project"   # <-- EDIT: SWAT+ project dir holding TxtInOut/
+start_date: "1976-01-01"          # PRODUCTION: 4y warmup before 1980
+end_date: "1989-12-31"            # PRODUCTION: 10y calibration (1980-1989)
+warmup: 4                         # PRODUCTION
+threads: 20
+seed: 123
+channel_exutorio: 33
+
+# --- Morris screening settings (PRODUCTION) ---
+morris:
+  tag_prefix: "MORRIS1"            # output folder pattern: MORRIS1_v<N>
+  m_traj: 15                    # PRODUCTION
+  delta: 0.20
+
+# --- Calibration settings (PRODUCTION) ---
+# Acceptance architecture:
+#   satisfactory_run = (obj_rc <= threshold_obj_rc) AND
+#                      (obj_bfi_mdae <= threshold_obj_bfi)
+# RC  = Q_total / P (single deviation; avoids the circularity of a dual ET+Q filter)
+# BFI = Eckhardt forward filter applied per gauge with (a, BFImax) from CSV;
+#       obj_bfi_mdae = median over N gauges of |BFI_obs - BFI_sim|
+# ET is no longer a filter — it is the model's escape valve under closure.
+cal:
+  tag_prefix: "ITER1"            # output folder pattern: ITER1_v<N>
+  n_simulations: 250            # PRODUCTION
+  type: "soft"                  # soft = RC + BFI proxy only; hard = adds NSE/KGE/PBIAS
+  inheritance_source: "satisfactory"  # PRODUCTION: narrow on accepted runs only
+  start_date: "1976-01-01"          # PRODUCTION
+  end_date: "1989-12-31"            # PRODUCTION
+  warmup: 4                         # PRODUCTION
+
+  # targets and thresholds
+  rc_target:           0.51853  # observed Q_total / P (1980-1989 at Iraí outlet)
+  threshold_obj_rc:    0.10     # |RC_obs - RC_sim| <= 0.10
+  threshold_obj_bfi:   0.10     # median(|BFI_obs - BFI_sim|) <= 0.10
+
+# --- BFI multisite targets (per-gauge BFI_obs, a, BFImax via Collischonn & Fan q90/q50) ---
+# Path is RELATIVE to project_path (same convention as obs_files).
+# CSV must have columns: channel_id, bfi (=BFI_obs), a, bfimax_q9050.
+bfi_targets_csv: "bfi_targets.csv"
+
+# BFI runtime controls (PRODUCTION)
+bfi:
+  sim_source:       "swat_internal_bf"  # filter source: SWAT+ internal aquifer-to-channel
+                                        # partition (Σ aqu_flo_cha × area / Q at gauge).
+                                        # Alternative: "eckhardt" (legacy diagnostic only).
+  multi_day_output: "vazao_multi_day"
+  period_start:     "1980-01-01"
+  period_end:       "1989-12-31"        # PRODUCTION; only used by Eckhardt branch
+  min_days:         365                 # PRODUCTION; only used by Eckhardt branch
+  eps:              0.05                 # per-channel "passed" threshold for reporting
+
+# --- Observed data (for monthly streamflow diagnostics in Iteration 1) ---
+obs_files:
+  monthly: "obs_flow_mon.csv"
+  daily: "obs_flow_daily.csv"
+obs_start_date: "1980-01-01"
+
+# --- SWAT+ outputs for Morris screening ---
+# vazao_multi_day captures daily Q at all 9 BFI gauges (Eckhardt input).
+# basin_wb + basin_aqu give the annual P / ET / surq / latq / gw_q for RC.
+morris_outputs:
+  vazao_multi_day:                  # daily Q at ALL selected gauges (Eckhardt input)
+    file: "channel_sdmorph_day"
+    variable: "flo_out"
+    unit: [5, 19, 33, 35, 42, 73, 79, 114, 136, 146, 194]   # 9 BFI + 33 (Iraí outlet) + 35 (Foz Chapecó, ONS) for daily Q capture
+  precip:
+    file: "basin_wb_aa"
+    variable: "precip"
+    unit: 1
+  et:
+    file: "basin_wb_aa"
+    variable: "et"
+    unit: 1
+  surq:
+    file: "basin_wb_aa"
+    variable: "surq_gen"
+    unit: 1
+  latq:
+    file: "basin_wb_aa"
+    variable: "latq"
+    unit: 1
+  gw_q:
+    file: "basin_aqu_aa"
+    variable: "flo"
+    unit: 1
+  wateryld:                           # HRU-level water yield (mm/yr) — RC diagnostic
+    file: "basin_wb_aa"
+    variable: "wateryld"
+    unit: 1
+  baseflow:                           # basin_aqu flo_cha (mm/yr) — RC diagnostic
+    file: "basin_aqu_aa"
+    variable: "flo_cha"
+    unit: 1
+
+# --- SWAT+ outputs for calibration ---
+# Note on multi-channel daily Q: `unit:` accepts a vector. The block below
+# captures daily flow at all selected ANA-anchored channels in a single output
+# entry — these series feed the Eckhardt baseflow filter (BFI multi-site).
+cal_outputs:
+  vazao_exutorio:
+    file: "channel_sdmorph_mon"
+    variable: "flo_out"
+    unit: 33
+  vazao_multi_day:                  # daily Q at all selected gauges + outlet
+    file: "channel_sdmorph_day"
+    variable: "flo_out"
+    unit: [5, 19, 33, 35, 42, 73, 79, 114, 136, 146, 194]   # 9 BFI + 33 (Iraí) + 35 (Foz Chapecó). 33 & 35 NOT in bfi_targets.csv (regulated)
+  # channel-routed RC reads cha_aa_flo_out_<channel_exutorio> from
+  # extra_outputs.channels (channel_sd_aa, m³/s annual avg) and converts to
+  # mm/yr via aquifer.con upstream-area topology. No separate flo_out_mm
+  # capture is needed — channel_sdmorph_aa.flo_out_mm is not exposed by
+  # SWATrunR's output-schema map.
+  precip:
+    file: "basin_wb_aa"
+    variable: "precip"
+    unit: 1
+  et:
+    file: "basin_wb_aa"
+    variable: "et"
+    unit: 1
+  wateryld:
+    file: "basin_wb_aa"
+    variable: "wateryld"
+    unit: 1
+  baseflow:
+    file: "basin_aqu_aa"
+    variable: "flo_cha"
+    unit: 1
+
+# ------------------------------------------------------------------------------
+# extra_outputs (OPTIONAL) — bulk retention for per-channel daily flow and
+# per-aquifer baseflow components. Enabled here because the filter intent is
+# RC + BFI multi-site (BFI = Eckhardt(daily Q at selected channels)).
+# Filter logic itself is being built separately by the user; this block ensures
+# the data is captured for downstream comparison.
+# ------------------------------------------------------------------------------
+extra_outputs:
+  enabled: true
+
+  channels:
+    enabled: true
+    # Selected ANA-anchored channels (in-basin) for BFI multi-site comparison.
+    # Final list comes from the user's separate channel-selection code.
+    units: [5, 19, 33, 35, 42, 73, 79, 114, 136, 146, 194]   # 9 BFI + 33 + 35
+    # Daily channel flow needed for Eckhardt (channel_sdmorph_day, not _aa)
+    # NOTE: channel_sd_aa is annual avg (ok for H_diss); for daily Q at multiple
+    # channels we use channel_sdmorph_day handled below as a separate cal_output.
+    vars: ["flo_in", "flo_out", "evap", "seep"]
+
+  aquifer:
+    enabled: true
+    n_aqu: 47
+    aqu_vars: ["flo", "rchrg", "seep", "revap", "flo_cha"]
+
+  # lsu/hru disabled here — too heavy for an annual annual water-balance iteration
+  lsu:
+    enabled: false
+  hru:
+    enabled: false
+
+# --- Morris screening observed target (single RC scalar) ---
+morris_targets:
+  rc: 0.51853                  # observed Q_total / P (1980-1989 at Iraí outlet)
+
+# --- Morris screening metrics to compute EE (Morris) ---
+# obj_rc + obj_bfi_mdae individually + obj_total (= w_rc * obj_rc + w_bfi * obj_bfi_mdae)
+morris_metrics:
+  - "obj_rc"
+  - "obj_bfi_mdae"
+  - "obj_total"
+
+# --- Parameters (Iteration 1 Morris screening = 14 params: 10 hydrology + 4 aquifer) ---
+# All Iteration 1 calibration parameters are screened by Morris (no separate cal_extra).
+# rchg_dp is fixed at 0 in aquifer.aqu (closure premise; not calibrated).
+parameters:
+  - short: "cn2"
+    par_name: "cn2::cn2.hru | change = pctchg"
+    min: -25
+    max: 25
+  - short: "awc"
+    par_name: "awc::awc.sol | change = pctchg"
+    min: -25
+    max: 25
+  - short: "esco"
+    par_name: "esco::esco.hru | change = absval"
+    min: 0.01
+    max: 1.00
+  - short: "epco"
+    par_name: "epco::epco.hru | change = absval"
+    min: 0.01
+    max: 1.00
+  - short: "perco"
+    par_name: "perco::perco.hru | change = absval"
+    min: 0.01
+    max: 1.00
+  - short: "canmx"
+    par_name: "canmx::canmx.hru | change = absval"
+    min: 0.0
+    max: 10.0
+  - short: "latq_co"
+    par_name: "latq_co::latq_co.hru | change = absval"
+    min: 0.01
+    max: 1.00
+  - short: "petco"
+    par_name: "petco::petco.hru | change = absval"
+    min: 0.80
+    max: 1.20
+  - short: "revap_co"
+    par_name: "revap_co::revap_co.aqu | change = absval"
+    min: 0.02
+    max: 0.20
+  - short: "cn3_swf"
+    par_name: "cn3_swf::cn3_swf.hru | change = absval"
+    min: 0.00
+    max: 1.00
+  - short: "flo_min"
+    par_name: "flo_min::flo_min.aqu | change = absval"
+    min: 0.00
+    max: 3.00
+  - short: "bf_max"
+    par_name: "bf_max::bf_max.aqu | change = absval"
+    min: 0.10
+    max: 1.50
+  - short: "revap_min"
+    par_name: "revap_min::revap_min.aqu | change = absval"
+    min: 0.00
+    max: 2.00
+  - short: "alpha_bf"
+    par_name: "alpha::alpha.aqu | change = absval"
+    min: 0.001
+    max: 0.30
+
+# --- Check parameter range (Iteration 1 only) ---
+check_range:
+  enabled: true
+  source_files:
+    soils_sol:
+      vars: ["dp","bd","awc","soil_k","carbon","clay","silt","sand","rock","alb","usle_k","ec","caco3","ph"]
+    hydrology_hyd:
+      vars: ["lat_ttime","lat_sed","can_max","esco","epco","orgn_enrich","orgp_enrich","cn3_swf","bio_mix","perco","lat_orgn","lat_orgp","pet_co","latq_co"]
+    topography_hyd:
+      vars: ["slp","slp_len","lat_len","dist_cha","depos"]
+  map:
+    - short: "awc"
+      source_file: "soils.sol"
+      source_var: "awc"
+      cal_name: "awc"
+      cal_obj_typ: "sol"
+    - short: "canmx"
+      source_file: "hydrology.hyd"
+      source_var: "can_max"
+      cal_name: "canmx"
+      cal_obj_typ: "hru"
+    - short: "esco"
+      source_file: "hydrology.hyd"
+      source_var: "esco"
+      cal_name: "esco"
+      cal_obj_typ: "hru"
+    - short: "epco"
+      source_file: "hydrology.hyd"
+      source_var: "epco"
+      cal_name: "epco"
+      cal_obj_typ: "hru"
+    - short: "perco"
+      source_file: "hydrology.hyd"
+      source_var: "perco"
+      cal_name: "perco"
+      cal_obj_typ: "hru"
+    - short: "petco"
+      source_file: "hydrology.hyd"
+      source_var: "pet_co"
+      cal_name: "petco"
+      cal_obj_typ: "hru"
+    - short: "latq_co"
+      source_file: "hydrology.hyd"
+      source_var: "latq_co"
+      cal_name: "latq_co"
+      cal_obj_typ: "hru"
+    - short: "cn3_swf"
+      source_file: "hydrology.hyd"
+      source_var: "cn3_swf"
+      cal_name: "cn3_swf"
+      cal_obj_typ: "hru"

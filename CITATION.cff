@@ -1,12 +1,15 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it using the metadata below."
-title: "swatplus-hms-calibration: Hierarchical Multi-Scale Calibration of SWAT+ guided by Adaptive Sensitivity Analysis"
+title: "swatplus-hmscal: Hierarchical Multiscale Calibration (HMSCal) of SWAT+ guided by Adaptive Sensitivity Analysis"
 abstract: >-
-  An R-based framework for hierarchical multi-scale calibration of SWAT+
-  hydrological models. Couples Morris (LH-OAT) sensitivity screening
+  HMSCal is an R-based framework for hierarchical multiscale calibration of
+  SWAT+ hydrological models. Couples Morris (LH-OAT) sensitivity screening
   re-executed at each temporal scale (annual water balance, monthly
   streamflow, daily streamflow) with sigma-informed parameter-range
-  narrowing and cross-phase robustness filtering to manage equifinality.
+  narrowing and cross-iteration filtering to manage equifinality. A runoff
+  coefficient target and a multisite aquifer partition proxy stay active
+  across every iteration, so the accepted ensemble is constrained on
+  internal flow partitioning and not on outlet streamflow alone.
   Built on top of SWATrunR.
 type: software
 authors:
@@ -14,17 +17,23 @@ authors:
     given-names: "Elzon Cassio"
     orcid: "https://orcid.org/0000-0002-8391-4435"
     affiliation: "Universidade Federal de Santa Maria (UFSM)"
-version: "1.0.0"
-date-released: "2026-04-26"
+version: "1.1.0"
+date-released: "2026-10-27"
 license: MIT
-repository-code: "https://github.com/ECRIPPEL/swatplus-hms-calibration"
+repository-code: "https://github.com/ECRIPPEL/swatplus-hmscal"
 identifiers:
   - type: doi
+    value: 10.5281/zenodo.19793606
+    description: "Concept DOI (always resolves to the latest version)"
+  - type: doi
     value: 10.5281/zenodo.19793607
-    description: "Concept DOI (always points to the latest version)"
+    description: "Version DOI for v1.0.0, archived under the former name swatplus-hms-calibration"
 keywords:
   - SWAT+
+  - HMSCal
   - hierarchical calibration
+  - soft calibration
+  - baseflow index
   - sensitivity analysis
   - Morris method
   - LH-OAT

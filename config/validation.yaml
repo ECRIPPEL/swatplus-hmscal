@@ -1,0 +1,155 @@
+# ==============================================================================
+# VALIDATION CONFIG — Split-sample test of an HMSCal ensemble on 1990-1999
+#
+# Propagates the satisfactory ensemble from ITER4_v1 (n=80) through SWAT+
+# over an independent decade (1990-1999) and re-evaluates the SAME
+# joint criterion used at calibration:
+#   Moriasi (NSE_day > 0.50, KGE_day > 0.50, |PBIAS_day| < 15%)
+#   AND obj_rc        <= 0.10
+#   AND obj_bfi_mdae  <= 0.10
+#
+# IMPORTANT — climate-period-dependent inputs (re-derive these for 1990-1999
+# before running):
+#   * cal.rc_target          : Q_obs/P_obs over 1990-1999 (NOT 0.51853 of 1980s)
+#   * bfi_targets_csv        : BFI_obs at the 3 active gauges, q90/q50 estimator
+#                              applied to daily Q_obs over 1990-1999
+#   * obs_files.daily        : 1990-1999 daily Q at outlet
+#   * obs_files.monthly      : 1990-1999 monthly Q at outlet
+#   * bfi.multi_day_output   : daily Q at the 3 filter channels (sim, captured
+#                              automatically by SWAT+ when run with the
+#                              cal_outputs block below over the new window)
+# ==============================================================================
+
+iteration: 4                  # validation propagates the Iteration 4 ensemble
+script_version: "validation"
+
+# --- Paths and execution (PRODUCTION — 1990-1999, 4y warmup from 1986) ---
+project_path: "C:/path/to/swatplus_project"   # <-- EDIT: SWAT+ project dir holding TxtInOut/
+start_date: "1986-01-01"          # PRODUCTION: 4y warmup before 1990
+end_date:   "1999-12-31"          # PRODUCTION: 10y validation window (1990-1999)
+warmup: 4                         # PRODUCTION
+threads: 20
+seed: 123
+channel_exutorio: 33
+
+# --- Validation settings ---
+validation:
+  tag_prefix: "VAL"             # output folder pattern: VAL_v<N>
+  # Path to the accepted-ensemble CSV produced by the last calibration
+  # iteration. Resolved as
+  #   <project_path>/<value>   (i.e. C:/path/to/swatplus_project/VAL_hmscal/...)
+  # Stage that CSV into the folder below before running run_val.R.
+  param_sets_csv: "VAL_hmscal/simulation_results_satisfactories_ITER4_v1.csv"
+
+# --- Acceptance criterion mirrors ITER4 (joint thresholds) ---
+cal:
+  type: "hard"
+  start_date: "1986-01-01"          # PRODUCTION
+  end_date:   "1999-12-31"          # PRODUCTION
+  warmup: 4                         # PRODUCTION
+
+  # Daily Moriasi
+  threshold_nse:        0.50
+  threshold_kge:        0.50
+  threshold_abs_pbias:  15
+
+  # RC + BFI predicates
+  # ⚠  rc_target MUST be recomputed for 1990-1999.  Placeholder below uses the
+  #    1990s value already cited in the paper §2.4.5 (WYLD/P = 0.564) — verify
+  #    against the actual 1990-1999 ANA daily series before running.
+  rc_target:           0.564
+  threshold_obj_rc:    0.10
+  threshold_obj_bfi:   0.10
+
+# --- BFI multisite targets (1990-1999 RECOMPUTED) ---
+# ⚠  bfi_targets_1990s.csv MUST be derived by re-running the same Collischonn
+#    & Fan q90/q50 estimator that produced bfi_targets.csv (the 1980s file),
+#    but on daily Q_obs over 1990-1999 at channels {73350000, 70200000,
+#    71498000}.  Schema: channel_id, bfi (=BFI_obs), a, bfimax_q9050.
+bfi_targets_csv: "bfi_targets_1990s.csv"   # resolved as <project_path>/bfi_targets_1990s.csv (same convention as the 1980s file). Copy data/bfi_targets_1990s.csv into the project root before running.
+
+bfi:
+  sim_source:       "swat_internal_bf"   # SAME as calibration filter source
+  multi_day_output: "vazao_multi_day"
+  period_start:     "1990-01-01"
+  period_end:       "1999-12-31"        # PRODUCTION
+  min_days:         365                  # PRODUCTION
+  eps:              0.05
+
+# --- Observed data (1990-1999) ---
+# Reusing the same files as calibration since obs_irai19801999.csv covers
+# 1980-01-01 to 1999-12-31 (full 20-year decade). The obs_start_date below
+# crops the comparison window to the validation decade automatically.
+obs_files:
+  monthly: "obs_flow_mon.csv"
+  daily:   "obs_flow_daily.csv"
+obs_start_date: "1990-01-01"
+
+temporal_scale: "daily"
+metric_suffix:  "_day"
+
+# --- SWAT+ outputs (mirror Iteration 4 cal_outputs block) -----------------
+cal_outputs:
+  vazao_exutorio_day:
+    file: "channel_sdmorph_day"
+    variable: "flo_out"
+    unit: 33
+  vazao_exutorio_mon:
+    file: "channel_sdmorph_mon"
+    variable: "flo_out"
+    unit: 33
+  vazao_multi_day:                  # daily Q at filter + diagnostic gauges
+    file: "channel_sdmorph_day"
+    variable: "flo_out"
+    unit: [5, 19, 33, 35, 42, 73, 79, 114, 136, 146, 194]
+  # ---- Tier 1: closure / RC denominators ----
+  precip:
+    file: "basin_wb_aa"
+    variable: "precip"
+    unit: 1
+  et:
+    file: "basin_wb_aa"
+    variable: "et"
+    unit: 1
+  wateryld:
+    file: "basin_wb_aa"
+    variable: "wateryld"
+    unit: 1
+  baseflow:
+    file: "basin_aqu_aa"
+    variable: "flo_cha"
+    unit: 1
+  # ---- Tier 2: optional diagnostic decomposition ----
+  surq_gen:
+    file: "basin_wb_aa"
+    variable: "surq_gen"
+    unit: 1
+  latq:
+    file: "basin_wb_aa"
+    variable: "latq"
+    unit: 1
+  perc:
+    file: "basin_wb_aa"
+    variable: "perc"
+    unit: 1
+
+# --- extra_outputs (per-channel + per-aquifer for the RC + BFI logic) ------
+extra_outputs:
+  enabled: true
+
+  channels:
+    enabled: true
+    units: [5, 19, 33, 35, 42, 73, 79, 114, 136, 146, 194]
+    vars:  ["flo_in", "flo_out", "evap", "seep"]
+
+  aquifer:
+    enabled: true
+    n_aqu: 47
+    aqu_vars: ["flo", "rchrg", "seep", "revap", "flo_cha"]
+
+  # Disable per-LSU and per-HRU outputs at validation — they are only needed
+  # for diagnostic reporting at calibration.  Toggle on if you want them.
+  lsu:
+    enabled: false
+  hru:
+    enabled: false

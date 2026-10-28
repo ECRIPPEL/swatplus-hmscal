@@ -4,16 +4,25 @@
 .Rproj.user/
 *.Rproj
 *.Rcheck/
+.Renviron
 
 # ── SWAT+ model data (large / machine-specific) ──────────────────────────────
 # TxtInOut folders
 TxtInOut/
 */TxtInOut/
 
-# Observed data CSVs (contain local data, not part of the framework)
+# Observed data a user drops in for their own catchment. The worked example
+# under data/obs/ is tracked on purpose and is NOT matched by these patterns.
 obs_flow_*.csv
+/obs_*.csv
 
-# ── Calibration / GSA outputs (generated at runtime) ─────────────────────────
+# ── Calibration / GSA / validation outputs (generated at runtime) ────────────
+# Runs normally write into project_path, not here, but ignore them anyway in
+# case project_path is set to this folder. Names follow <TAG>_v<N>/.
+GSA[0-9]*_v[0-9]*/
+CAL[0-9.]*_v[0-9]*/
+VAL*_v[0-9]*/
+# legacy names from earlier versions of the pipeline
 GSA_phase*/
 SOFT_phase*/
 HARD_phase*/

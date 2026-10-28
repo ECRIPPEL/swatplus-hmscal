@@ -1,5 +1,15 @@
 # ==============================================================================
 # morris_classify.R — Morris screening classification + quantile-based range narrowing
+#
+# KNOWN NAMING INCONSISTENCY (flagged 2026-05-19):
+# The cutoff variables `mu_med` and `sigma_med` are computed with mean(), not
+# median(). The "_med" suffix is misleading but the behaviour is correct:
+# classify_morris() and calc_new_ranges() use the arithmetic MEAN of mu_star
+# and sigma across screened parameters as the cutoff for the High/Low
+# importance and interaction groups. Names retained to preserve git-blame
+# stability; rename `mu_med -> mu_mean` and `sigma_med -> sigma_mean` in a
+# future cleanup pass (also touches plots.R). The same misnaming is mirrored
+# in swatplus-calibrator/R/morris_classify.R.
 # ==============================================================================
 
 library(dplyr)
@@ -40,12 +50,12 @@ morris_quantile_rules <- function() {
   )
 }
 
-#' Compute new parameter ranges from behavioural posterior + Morris groups
+#' Compute new parameter ranges from the accepted posterior + Morris groups
 #'
 #' @param satisfactory_results Tibble of satisfactory runs (with parameter columns)
 #' @param param_names_swat Character vector of SWATrunR par_name column names
 #' @param param_info Tibble with short and par_name for mapping
-#' @param ranking_morris Tibble with parameter, mu_star, sigma (from GSA)
+#' @param ranking_morris Tibble with parameter, mu_star, sigma (from Morris screening)
 #' @return Tibble with new_min, new_max per parameter
 calc_new_ranges <- function(satisfactory_results, param_names_swat,
                             param_info, ranking_morris) {
